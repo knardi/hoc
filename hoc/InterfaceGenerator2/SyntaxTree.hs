@@ -1,7 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 module SyntaxTree where
 
-import Data.Generics
+import Data.Generics hiding (Generic)
+import Data.Binary
+import GHC.Generics (Generic)
 import SrcPos
 
 type ParsedHeader = [ DeclarationAndPos ]
@@ -39,7 +41,8 @@ data Selector =
             selArgTypes :: [CType],
             selVarArg :: Bool
         }
-    deriving (Read,Show,Eq,Ord,Typeable,Data)
+    deriving (Read,Show,Eq,Ord,Typeable,Data,Generic)
+instance Binary Selector
     
 data PropertyAttribute =
         Getter String
@@ -53,7 +56,8 @@ data PropertyAttribute =
                        
     
 data EnumValue = NextValue | GivenValue Integer | TooComplicatedValue String
-    deriving (Read, Show, Eq, Ord,Typeable,Data)
+    deriving (Read, Show, Eq, Ord,Typeable,Data,Generic)
+instance Binary EnumValue
     
 data CType = CTIDType [String {- protocols -}]
            | CTSimple String
@@ -64,9 +68,11 @@ data CType = CTIDType [String {- protocols -}]
            | CTStruct String [(CType, String)]
            | CTUnion String [(CType, String)]
            | CTBuiltin (Maybe Bool {- signed/unsigned? -}) (Maybe Length) String
-    deriving (Read,Show,Eq,Ord,Typeable,Data)
+    deriving (Read,Show,Eq,Ord,Typeable,Data,Generic)
+instance Binary CType
     
 data Length = LongLong | Long | Short
-    deriving (Read,Show,Eq,Ord,Typeable,Data)
+    deriving (Read,Show,Eq,Ord,Typeable,Data,Generic)
+instance Binary Length
 
 cTypeInt = CTBuiltin Nothing Nothing "int"

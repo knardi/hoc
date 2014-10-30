@@ -21,7 +21,6 @@ import Progress
 
 #ifdef BINARY_INTERFACES
 import Data.Binary      ( encodeFile, decode )
-import BinaryInstances  ()
 import qualified Data.ByteString.Lazy as LBS
 #endif
 

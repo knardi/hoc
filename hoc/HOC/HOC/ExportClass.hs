@@ -3,6 +3,7 @@ module HOC.ExportClass where
 
 import Foreign.C.String
 import Control.Concurrent.MVar
+import Data.Typeable.Internal
 import Data.Dynamic
 import Data.Maybe(mapMaybe)
 import Data.Char(toUpper)
@@ -134,7 +135,7 @@ mkClassExportAction name prefix members =
                 setHaskellDataMethod imethods 2 super (
                         Just ($(typedInitIvars) >>= return . toDyn)
                     )
-                $(fillMethodList False 3 [|imethods|] instanceMethods) 
+                $(fillMethodList False 3 [|imethods|] instanceMethods)
                 $(fillMethodList True 0 [|cmethods|] classMethods)
                 clsname <- newCString name
                 newClass super clsname ivars imethods cmethods
@@ -159,13 +160,13 @@ mkClassExportAction name prefix members =
         nIMethods = length instanceMethods
         nCMethods = length classMethods
         
-            -- GHC fails with Prelude.last if we pass it an empty doE
+        -- GHC fails with Prelude.last if we pass it an empty doE
+        fillMethodList :: Bool -> Integer -> ExpQ -> [Method] -> ExpQ
         fillMethodList isClassMethod firstIdx objCMethodList [] = [| return () |]  
         fillMethodList isClassMethod firstIdx objCMethodList methods =
-            doE $
-            map (noBindS . exportMethod isClassMethod objCMethodList)
-                (zip methods [firstIdx..])
-                
+            doE $ map (noBindS . exportMethod isClassMethod objCMethodList) (zip methods [firstIdx..])
+        
+        exportMethod :: Bool -> ExpQ -> (Method, Integer) -> ExpQ
         exportMethod isClassMethod objCMethodList
                      (ImplementedMethod selName, num)
             = do
@@ -220,7 +221,7 @@ mkClassExportAction name prefix members =
         setterNameFor ivarName = setterNameForH ivarName ++ ":"
         setterNameForH ivarName = "set" ++ toUpper (head ivarName) : tail ivarName
             
-                
+        exportMethod' :: Bool -> ExpQ -> Integer -> ExpQ -> Int -> Bool -> Name -> ExpQ -> ExpQ -> ExpQ -> ExpQ
         exportMethod' isClassMethod objCMethodList num methodBody
                        nArgs isUnit impTypeName selExpr cifExpr retainedExpr =
             [|
@@ -274,6 +275,7 @@ mkClassExportAction name prefix members =
                              
                 instanceType = conT $ mkName name
                 
+                getArg :: (String, Integer) -> StmtQ
                 getArg (argname, argnum) =
                     bindS (varP (mkName argname))
                           [| getMarshalledArgument $(varE $ mkName "args") argnum |]

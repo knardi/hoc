@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 module CTypeToHaskell(TypeEnvironment(..),
                       TypeNameKind(..),
                       isClassType,
@@ -28,6 +28,8 @@ import Text.PrettyPrint
 
 import Debug.Trace
 import Data.Generics(Typeable,Data)
+import Data.Binary
+import GHC.Generics (Generic)
 
 data TypeNameKind = ClassTypeName | PlainTypeName
     deriving (Show)
@@ -52,14 +54,20 @@ typeDefinedIn (TypeEnvironment env) name =
 lookupTypeEnv (TypeEnvironment env) name = Map.lookup name env
 
 data HTypeTerm = Con String | HTypeTerm :$ HTypeTerm | Var String
-    deriving(Read,Eq,Ord,Show,Typeable,Data)
+    deriving(Read,Eq,Ord,Show,Typeable,Data,Generic)
+
+instance Binary HTypeTerm
     
 data HType = HType (Maybe (String, [String])) [String] HTypeTerm
     -- Maybe (tyvar, context), mentioned, terms
-    deriving(Read,Eq,Ord,Show,Typeable,Data)
+    deriving(Read,Eq,Ord,Show,Typeable,Data,Generic)
+
+instance Binary HType
 
 data HSelectorType = HSelectorType [String] [(String,String)] [String] [HTypeTerm]
-    deriving(Read,Eq,Ord,Show,Typeable,Data)
+    deriving(Read,Eq,Ord,Show,Typeable,Data,Generic)
+
+instance Binary HSelectorType
 
 cTypeToHaskell :: TypeEnvironment -> Bool -> String -> CType -> Maybe HType
 cTypeToHaskell env retval tyvar (CTIDType protocols) = 
@@ -178,7 +186,9 @@ data SelectorKind = PlainSelector
                   | CovariantInstanceSelector
                   | AllocSelector
                   | InitSelector
-    deriving (Read,Eq,Ord,Show,Typeable,Data)
+    deriving (Read,Eq,Ord,Show,Typeable,Data,Generic)
+instance Binary SelectorKind
+
 getSelectorType :: SelectorKind -> TypeEnvironment -> Selector -> Maybe HSelectorType
 
 getSelectorType PlainSelector env sel = do

@@ -1,8 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, DeriveGeneric #-}
 module Entities where
 
-import Control.Monad.State
-import Data.Generics
+import Control.Monad.State as MS
+import Data.Generics hiding (Generic)
+import Data.Binary
+import GHC.Generics hiding (Selector)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -20,17 +22,23 @@ data EntityID
     | FrameworkEntity Framework Int
     | DelayedClassLookup ByteString
     | DelayedProtocolLookup ByteString
-    deriving ( Read, Show, Eq, Ord, Typeable, Data )
+    deriving ( Read, Show, Eq, Ord, Typeable, Data, Generic )
+
+instance Binary EntityID
 
 data Module
     = LocalModule ModuleName
     | FrameworkModule Framework ModuleName
-    deriving ( Read, Show, Eq, Ord, Typeable, Data )
+    deriving ( Read, Show, Eq, Ord, Typeable, Data, Generic )
+
+instance Binary Module
 
 data HaskellType c h
     = ConvertedType h [EntityID]
     | UnconvertedType c
-    deriving ( Read, Show, Eq, Ord, Typeable, Data )
+    deriving ( Read, Show, Eq, Ord, Typeable, Data, Generic )
+
+instance (Binary a, Binary b) => Binary (HaskellType a b)
 
 type HaskellValueType = HaskellType CType HType
 type HaskellSelectorType = HaskellType (SelectorKind, Selector) HSelectorType
@@ -58,7 +66,9 @@ data EntityInfo
 
     | StructEntity (Maybe String) [HaskellValueType]
 
-    deriving ( Read, Show, Eq, Ord, Typeable, Data )
+    deriving ( Read, Show, Eq, Ord, Typeable, Data, Generic )
+
+instance Binary EntityInfo
     
 data Name
     = CName ByteString -- classes, typedefs, enums, variables, functions
@@ -72,7 +82,9 @@ data Name
         -- we don't want to resolve this later by name
 
     | Anonymous
-    deriving ( Read, Show, Eq, Ord, Typeable, Data )
+    deriving ( Read, Show, Eq, Ord, Typeable, Data, Generic )
+
+instance Binary Name
 
 data Entity = Entity {
         eName :: Name,
@@ -82,7 +94,9 @@ data Entity = Entity {
         eModule :: Module,
         eSrcPos :: SrcPos
     }
-    deriving ( Read, Show, Typeable, Data )
+    deriving ( Read, Show, Typeable, Data, Generic )
+
+instance Binary Entity
 
 type EntityMap = Map.Map EntityID Entity
 
@@ -91,7 +105,9 @@ data EntityPile = EntityPile {
         epFrameworkEntities :: EntityMap,
         epNextID :: Int
     }
-    deriving ( Read, Show, Typeable, Data )
+    deriving ( Read, Show, Typeable, Data, Generic )
+
+instance Binary EntityPile
 
 emptyEntityPile :: EntityPile
 emptyEntityPile = EntityPile Map.empty Map.empty 1
@@ -104,9 +120,9 @@ addImportedEntities _mod entities pile
 newEntity :: MonadState EntityPile m => Entity -> m EntityID
 newEntity e
     = do
-        EntityPile entities fws newID <- get
+        EntityPile entities fws newID <- MS.get
         let theID = LocalEntity newID
-        put (EntityPile (Map.insert theID e entities) fws (newID + 1))
+        MS.put (EntityPile (Map.insert theID e entities) fws (newID + 1))
         return theID
         
 lookupEntity :: String -> EntityID -> EntityPile -> Entity
